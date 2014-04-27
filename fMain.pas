@@ -30,7 +30,7 @@ begin
   Renderer.Parent := Self;
   Renderer.Align := alClient;
   // Todo: proper life cycle management for the game object.
-  Renderer.FGame := TGame.Create;
+  Renderer.Game := TGame.Create;
 end;
 
 end.

@@ -12,9 +12,12 @@ type
   TCell = class
   protected
     FValue: Integer;
-    FPosition: TPoint;
+    FPosition, FOldPosition: TPoint;
+    procedure SetPosition(Point: TPoint);
   public
     property Value: Integer read FValue;
+    property Position: TPoint read FPosition;
+    property OldPosition: TPoint read FOldPosition;
   end;
 
   TCellList = TList<TCell>;
@@ -81,7 +84,6 @@ end;
 function TGame.CollapseRow(Row: TCellList): Boolean;
 var
   ColIndex: Integer;
-  X, Y: Integer;
 begin
   // Collapse a row by adding up adjacent cells with the same value.
   Result := False;
@@ -211,6 +213,8 @@ begin
   // Create a cell at the given position and initialize it with the value.
   FBoard[Point.X, Point.Y] := TCell.Create;
   FBoard[Point.X, Point.Y].FValue := Value;
+  FBoard[Point.X, Point.Y].SetPosition(Point);
+  FBoard[Point.X, Point.Y].SetPosition(Point); // Twice, hack to also set oldposition
 end;
 
 procedure TGame.Start;
@@ -249,8 +253,19 @@ begin
       FBoard[X, Y] := nil;
       FFreeLocations.Add(Point(X, Y));
     end else
+    begin
       FBoard[X, Y] := Row[ColIndex];
+      Row[ColIndex].SetPosition(Point(X, Y));
+    end;
   end;
+end;
+
+{ TCell }
+
+procedure TCell.SetPosition(Point: TPoint);
+begin
+  FOldPosition := FPosition;
+  FPosition := Point;
 end;
 
 end.
