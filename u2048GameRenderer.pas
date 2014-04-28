@@ -85,6 +85,10 @@ var
 begin
   with Canvas do
   begin
+    // Score
+    Font.Color := clDkGray;
+    Font.Size := 24;
+    TextOut(10, 10, 'Score: ' + IntToStr(FGame.Score));
     // Background
     Brush.Color := clGray;
     FillRect(Rect(OffsetX, OffsetY, OffsetX + CellWidth * GridWidth, OffsetY + CellWidth * GridWidth));

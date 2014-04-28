@@ -30,6 +30,7 @@ type
   TGame = class
   private
     FNewCell: TCell;
+    FScore: Integer;
   protected
     // The grid of cells.
     FBoard: array[0..GridMax,0..GridMax] of TCell;
@@ -73,6 +74,7 @@ type
 
     // The game state.
     property State: TGameState read FState;
+    property Score: Integer read FScore;
   end;
 
 implementation
@@ -163,6 +165,7 @@ begin
       Result := True;
       // Todo: Keep the old value for animations.
       Row[ColIndex].FValue := Row[ColIndex].FValue shl 1;
+      FScore := FScore + Row[ColIndex].FValue;
       // Todo: Keep the cell for animations.
       Row[ColIndex - 1].Free;
       Row.Delete(ColIndex - 1);
