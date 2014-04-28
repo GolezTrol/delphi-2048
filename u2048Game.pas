@@ -10,7 +10,7 @@ const
   GridMax = GridWidth - 1;
 
 type
-  TGameState = (gsPlaying, gsWon, gsLost);
+  TGameState = (gsPlaying, gsWon, gsLost, gsSandbox);
   TDirection = (dLeft, dRight, dUp, dDown);
 
   TCell = class
@@ -28,6 +28,8 @@ type
   TPointList = TList<TPoint>;
 
   TGame = class
+  private
+    FNewCell: TCell;
   protected
     // The grid of cells.
     FBoard: array[0..GridMax,0..GridMax] of TCell;
@@ -51,6 +53,9 @@ type
     // Spawn a cell.
     procedure SpawnAt(Point: TPoint; Value: Integer);
 
+    // Check the end-game conditions and update the game state.
+    procedure CheckEndConditions;
+
     // Clear the board.
     procedure Clear;
   public
@@ -59,10 +64,15 @@ type
 
     // Start the game.
     procedure Start;
+    procedure Continue;
     // Slide the board in a given direction. Returns false if nothing moved or collapsed.
     function Move(Direction: TDirection): Boolean;
     // Get a cell at the given position. Returns false if that grid position is empty.
     function GetCell(X, Y: Integer; out Cell: TCell): Boolean; overload;
+    property NewCell: TCell read FNewCell;
+
+    // The game state.
+    property State: TGameState read FState;
   end;
 
 implementation
@@ -74,6 +84,58 @@ begin
 end;
 
 { TGame }
+
+procedure TGame.CheckEndConditions;
+const
+  // Checking in two directions is enough.
+  CheckDirections: array[0..1] of TDirection = (dRight, dDown);
+var
+  DirectionIndex, RowIndex, ColIndex: Integer;
+  Row: TCellList;
+  CanCollapseOrMove, HasEmptyCellsInbetween: Boolean;
+begin
+  // Be able to continue playing in sandbox mode after you've won.
+  if FState = gsSandbox then
+    Exit;
+
+  CanCollapseOrMove := False;
+
+  Row := TCellList.Create;
+  try
+    for DirectionIndex := Low(CheckDirections) to High(CheckDirections) do
+      for RowIndex := 0 to GridMax do
+      begin
+        // Get the non-empty cells of each row.
+        GetRow(RowIndex, CheckDirections[DirectionIndex], Row, HasEmptyCellsInbetween);
+
+        // If any of the cells has the winning value, the game is won.
+        for ColIndex := 0 to Row.Count - 1 do
+          if Row[ColIndex].Value = 2048 then
+            FState := gsWon;
+
+        // If not won, check the row to see if you can still move.
+        if FState = gsPlaying then
+        begin
+          if Row.Count < GridWidth then // Find a free cell.
+            CanCollapseOrMove := True
+          else // Find collapsable cells
+            for ColIndex := 1 to Row.Count - 1 do
+              if (Row[ColIndex].FValue = Row[ColIndex - 1].FValue) then
+                CanCollapseOrMove := True;
+        end;
+
+        Row.Clear;
+        // Todo: Nested loop might be early exited if the game is won. Hardly worth it.
+      end;
+
+    // Still playing and cannot move? Game is lost.
+    if (fState = gsPlaying) and not CanCollapseOrMove then
+      FState := gsLost;
+
+  finally
+    Row.Free;
+  end;
+end;
 
 procedure TGame.Clear;
 var
@@ -107,6 +169,13 @@ begin
     end;
     Inc(ColIndex);
   end;
+end;
+
+procedure TGame.Continue;
+begin
+  // Continue playing in sandbox mode.
+  if FState = gsWon then
+    FState := gsSandbox;
 end;
 
 constructor TGame.Create;
@@ -204,7 +273,9 @@ begin
     // If there was movement or collapse, there should always be a free cell.
     Assert(FFreeLocations.Count > 0);
     // Spawn a new value.
-    SpawnAt(FFreeLocations[Random(FFreeLocations.Count)], GetSpawnValue)
+    SpawnAt(FFreeLocations[Random(FFreeLocations.Count)], GetSpawnValue);
+    // Check if we've won or lost yet.
+    CheckEndConditions;
   end;
 end;
 
@@ -226,10 +297,11 @@ end;
 procedure TGame.SpawnAt(Point: TPoint; Value: Integer);
 begin
   // Create a cell at the given position and initialize it with the value.
-  FBoard[Point.X, Point.Y] := TCell.Create;
-  FBoard[Point.X, Point.Y].FValue := Value;
-  FBoard[Point.X, Point.Y].SetPosition(Point);
-  FBoard[Point.X, Point.Y].SetPosition(Point); // Twice, hack to also set oldposition
+  FNewCell := TCell.Create;
+  FNewCell.FValue := Value;
+  FNewCell.SetPosition(Point);
+  FNewCell.SetPosition(Point); // Twice, hack to also set oldposition
+  FBoard[Point.X, Point.Y] := FNewCell;
 end;
 
 procedure TGame.Start;

@@ -3,7 +3,7 @@ unit u2048GameRenderer;
 interface
 
 uses
-  Windows, Graphics, SysUtils, Classes, Controls, u2048Game, DateUtils;
+  Windows, Graphics, Forms, SysUtils, Classes, Controls, u2048Game, DateUtils;
 
 type
   TGameRenderer = class(TCustomControl)
@@ -36,14 +36,19 @@ var
   i: Integer;
   AnimationStartTime: TDateTime;
   FrameTime: TDateTime;
+  Moved: Boolean;
 begin
   inherited;
+  Moved := False;
   case Key of
-    VK_UP: FGame.Move(dUp);
-    VK_DOWN: FGame.Move(dDown);
-    VK_LEFT: FGame.Move(dLeft);
-    VK_RIGHT: FGame.Move(dRight);
+    VK_UP: Moved := FGame.Move(dUp);
+    VK_DOWN: Moved := FGame.Move(dDown);
+    VK_LEFT: Moved := FGame.Move(dLeft);
+    VK_RIGHT: Moved := FGame.Move(dRight);
   end;
+
+  if not Moved then
+    Exit;
 
   AnimationStartTime := Now;
   FrameTime := 1 / 86400 / (AnimationSteps / (1/4 { 1/4 second } ));
@@ -55,6 +60,12 @@ begin
       Sleep(0);
     Repaint;
   end;
+
+  if FGame.State = gsLost then
+    Application.MessageBox('You lost!', 'You lost!', MB_ICONERROR or MB_OK)
+  else if FGame.State = gsWon then
+    if Application.MessageBox('You won! Would you like to continue in sandbox mode?', 'You won!', MB_ICONEXCLAMATION or MB_YESNO) = ID_YES then
+      FGame.Continue;
 end;
 
 procedure TGameRenderer.Paint;
@@ -94,9 +105,11 @@ begin
       for Y := 0 to GridMax do
         if FGame.GetCell(X, Y, Cell) then
         begin
-          Brush.Color := clWhite; // Todo : depend on color;
+          Brush.Color := clCream; // Todo : depend on color;
           Font.Size := FontSize - Length(IntToStr(Cell.Value)) * 3;
           Font.Color := clDkGray;
+          if Cell = FGame.NewCell then
+            Brush.Color := clWebHoneydew;
 
           AX := Round(
                   CellWidth * (
