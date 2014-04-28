@@ -5,6 +5,10 @@ interface
 uses
   Windows, Generics.Collections, Types;
 
+const
+  GridWidth = 4;
+  GridMax = GridWidth - 1;
+
 type
   TGameState = (gsPlaying, gsWon, gsLost);
   TDirection = (dLeft, dRight, dUp, dDown);
@@ -26,12 +30,14 @@ type
   TGame = class
   protected
     // The grid of cells.
-    FBoard: array[0..3, 0..3] of TCell;
+    FBoard: array[0..GridMax,0..GridMax] of TCell;
     // A list of free positions on the grid on which new values can be spawned.
     FFreeLocations: TPointList;
     FState: TGameState;
     // Get a cell from the board, based on the row and column positions in a given direction.
     function GetCell(Row, Column: Integer; Direction: TDirection; out Cell: TCell): Boolean; overload;
+    // Get a row of cells from the board. Empty cells are skipped.
+    procedure GetRow(RowIndex: Integer; Direction: TDirection; Row: TCellList; out HasEmptyCellsInbetween: Boolean);
     // Collapse a list of cellsl
     function CollapseRow(Row: TCellList): Boolean;
     // Write a collapsed row back to the board and update the list of free cells.
@@ -73,8 +79,8 @@ procedure TGame.Clear;
 var
   X, Y: Integer;
 begin
-  for X := 0 to 3 do
-    for Y := 0 to 3 do
+  for X := 0 to GridMax do
+    for Y := 0 to GridMax do
     begin
       FBoard[X, Y].Free;
       FBoard[X, Y] := nil;
@@ -131,6 +137,26 @@ begin
   Result := Cell <> nil;
 end;
 
+procedure TGame.GetRow(RowIndex: Integer; Direction: TDirection; Row: TCellList; out HasEmptyCellsInbetween: Boolean);
+var
+  ColIndex: Integer;
+  Cell: TCell;
+  EmptyCellFound: Boolean;
+begin
+  HasEmptyCellsInbetween := False;
+  EmptyCellFound := False;
+  // Populate a list with all cells of the row.
+  for ColIndex := 0 to GridMax do
+    if GetCell(RowIndex, ColIndex, Direction, Cell) then
+    begin
+      Row.Add(Cell);
+      if EmptyCellFound then
+        HasEmptyCellsInbetween := True;
+    end
+    else
+      EmptyCellFound := True;
+end;
+
 function TGame.GetSpawnValue: Integer;
 begin
   // One in ten will be a 4. The others will be 2.
@@ -143,9 +169,8 @@ end;
 function TGame.Move(Direction: TDirection): Boolean;
 var
   Row: TCellList;
-  Cell: TCell;
-  RowIndex, ColIndex: Integer;
-  EmptyCellFound: Boolean;
+  RowIndex: Integer;
+  HasEmptyCellsInbetween: Boolean;
 begin
   Result := False;
 
@@ -153,22 +178,12 @@ begin
 
   Row := TCellList.Create;
   try
-    for RowIndex := 0 to 3 do
+    for RowIndex := 0 to GridMax do
     begin
-      // Populate a list with all cells of the row.
-      EmptyCellFound := False;
-      for ColIndex := 0 to 3 do
-      begin
-        if GetCell(RowIndex, ColIndex, Direction, Cell) then
-        begin
-          Row.Add(Cell);
-          // If there is an empty cell between two cells, then there will be movement
-          // even if there is no collapse, so return true already.
-          if EmptyCellFound then
-            Result := True;
-        end else
-          EmptyCellFound := True;
-      end;
+      GetRow(RowIndex, Direction, Row, HasEmptyCellsInbetween);
+
+      if HasEmptyCellsInbetween then
+        Result := True;
 
       // Collapse each of the rows.
       if CollapseRow(Row) then
@@ -200,7 +215,7 @@ begin
   // from that direction. That means that:
   // When moving down or right, inverse the column index to count from the far end.
   if Direction in [dDown, dRight] then
-    Column := 3 - Column;
+    Column := GridMax - Column;
   // When moving up or down, swap row and column, to have vertical rows.
   if Direction in [dUp, dDown] then
     Swap(Row, Column);
@@ -240,7 +255,7 @@ var
 begin
   // Update the board by simply resetting all cells in the board.
   // Todo: Remember the old positions for animations.
-  for ColIndex := 0 to 3 do
+  for ColIndex := 0 to GridMax do
   begin
 
     // Translate column and row to actual grid position.

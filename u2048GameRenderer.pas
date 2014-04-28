@@ -76,22 +76,22 @@ begin
   begin
     // Background
     Brush.Color := clGray;
-    FillRect(Rect(OffsetX, OffsetY, OffsetX + CellWidth * 4, OffsetY + CellWidth * 4));
+    FillRect(Rect(OffsetX, OffsetY, OffsetX + CellWidth * GridWidth, OffsetY + CellWidth * GridWidth));
 
     // Grid
     Pen.Color := clSilver;
     Pen.Width := LineWidth;
-    for X := 0 to 4 do
+    for X := 0 to GridWidth do
     begin
       MoveTo(OffsetX + X * CellWidth, OffsetY);
-      LineTo(OffsetX + X * CellWidth, OffsetY + CellWidth * 4);
+      LineTo(OffsetX + X * CellWidth, OffsetY + CellWidth * GridWidth);
       MoveTo(OffsetX, OffsetY + X * CellWidth);
-      LineTo(OffsetX + CellWidth * 4, OffsetY + X * CellWidth);
+      LineTo(OffsetX + CellWidth * GridWidth, OffsetY + X * CellWidth);
     end;
 
     // Cells
-    for X := 0 to 3 do
-      for Y := 0 to 3 do
+    for X := 0 to GridMax do
+      for Y := 0 to GridMax do
         if FGame.GetCell(X, Y, Cell) then
         begin
           Brush.Color := clWhite; // Todo : depend on color;
